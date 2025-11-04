@@ -1,0 +1,174 @@
+/* Suite look with voice extras + BIG score */
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  background-image: url("https://cdn.glitch.global/c63a5aa8-d1bd-4a24-9150-634a1dd0277c/background.jpg.jfif?v=1745349118534");
+  background-size: 80%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.container {
+  text-align: center;
+  width: 100%;
+  max-width: 640px;
+  padding: 30px;
+  background-color: rgba(255, 255, 255, 0.90);
+  border-radius: 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  color: #333;
+}
+
+h1 {
+  font-size: 3rem;
+  color: #FF6F61;
+  margin-bottom: 18px;
+}
+
+h1 span.turbo {
+  display: inline-block;
+  font-weight: bold;
+  color: #FF6F61;
+  transform: skewX(-10deg);
+}
+
+#tense-buttons { margin-bottom: 16px; }
+#tense-buttons .tense-button {
+  background-color: #6e7fca;
+  color: white;
+  font-size: 1rem;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 4px;
+  transition: all 0.2s ease;
+}
+#tense-buttons .tense-button:hover { background-color: #5e69b5; transform: scale(1.05); }
+#tense-buttons .tense-button.active { background-color: #1abc9c; }
+
+#unlock-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0 18px 0;
+}
+#unlock-bar input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  width: 60%;
+  max-width: 280px;
+}
+#unlock-bar button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: #f39c12;
+  color: #fff;
+  cursor: pointer;
+}
+#unlock-bar #codeMsg { font-size: .95rem; color: #555; }
+
+.modes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.mode-btn {
+  font-size: 1.1rem;
+  padding: 14px;
+  background-color: #2ecc71;
+  color: white;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  width: 90%;
+  max-width: 420px;
+  transition: transform 0.2s, background-color 0.2s;
+}
+.mode-btn:hover:enabled { background-color: #27ae60; transform: scale(1.04); }
+.mode-btn:disabled { background-color: #e74c3c; cursor: not-allowed; }
+
+#game { margin-top: 16px; }
+#timer { font-size: 1.25rem; color: #2980b9; margin-bottom: 12px; }
+
+.voice-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.voice-bar button, .icon-btn {
+  font-size: 1rem;
+  padding: 8px 12px;
+  background-color: #9b59b6;
+  color: white;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}
+.voice-bar button:hover, .icon-btn:hover { filter: brightness(0.95); }
+
+#questions .q { margin: 10px 0; padding: 8px 0; }
+.q .prompt-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px; }
+#questions .prompt { font-size: 1.05rem; color: #555; }
+
+#questions input {
+  font-size: 1.1rem;
+  padding: 10px 12px;
+  width: 90%;
+  max-width: 460px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  outline: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+#questions input.good { background-color: rgba(46, 204, 113, 0.18); border-color: rgba(46, 204, 113, 0.6); }
+#questions input.bad { background-color: rgba(231, 76, 60, 0.18); border-color: rgba(231, 76, 60, 0.6); }
+
+.controls { margin-top: 8px; }
+#submit, #back-button {
+  font-size: 1.1rem;
+  padding: 12px 18px;
+  background-color: #f39c12;
+  color: white;
+  border-radius: 12px;
+  cursor: pointer;
+  margin: 10px 6px;
+  border: none;
+  transition: transform 0.2s, background-color 0.2s;
+}
+#submit:hover, #back-button:hover { background-color: #e67e22; transform: scale(1.04); }
+
+/* Results */
+#results { margin-top: 14px; text-align: left; display: flex; justify-content: center; }
+#results ul { list-style: none; padding: 0; margin: 0; width: 100%; max-width: 560px; }
+#results li { font-size: 1rem; padding: 8px 10px; margin: 6px 0; border-radius: 10px; border: 1px solid #ddd; }
+#results li.correct { background-color: rgba(46, 204, 113, 0.12); border-color: rgba(46, 204, 113, 0.6); color: #1f6f3f; }
+#results li.incorrect { background-color: rgba(231, 76, 60, 0.12); border-color: rgba(231, 76, 60, 0.6); color: #8b2a22; }
+
+/* Make the score bigger and clearer */
+.result-summary { 
+  text-align: center; 
+  margin: 6px 0 10px 0; 
+  font-size: 1.1rem;
+}
+.result-summary .final-time {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+.result-summary .line { margin: 4px 0; }
