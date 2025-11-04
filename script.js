@@ -1,5 +1,7 @@
 // TURBO: IR + Transport — Present tense only
-// D1 = IR only (no transport), D2/D3 = IR + Transport
+// D1 = IR only (bare verb), D2/D3 = IR + Transport (to school)
+// Includes pos/neg/question; capitals ignored; accents optional;
+// inverted ¿ ignored; final ? required for questions.
 (()=>{
   const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 
@@ -8,7 +10,7 @@
     title: "IR + Transport",
     codes: { D2: "MTW-D2-OPEN", D3: "MTW-D3-OPEN", FRIDAY: "MTW-FRI-OPEN" },
     days: {
-      D1: { label: "Monday (IR only)", verbs: ["ir"] },
+      D1: { label: "Monday (IR only — bare verb)", verbs: ["ir"] },
       D2: { label: "Tuesday (IR + Transport)", verbs: ["ir"] },
       D3: { label: "Wednesday (IR + Transport)", verbs: ["ir"] }
     },
@@ -16,7 +18,7 @@
     PENALTY_SECONDS: 30
   };
 
-  // ----- VOICE -----
+  // ----- VOICE (TTS) -----
   const VOICE = {
     enabled: 'speechSynthesis' in window,
     english: null, spanish: null,
@@ -42,13 +44,14 @@
   };
   VOICE.init();
 
+  // ----- Speech recognition (dictation) -----
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   const srSupported = !!SR;
 
-  // ----- IR DB -----
+  // ----- DB -----
   const DB = { ir: { present: ["voy","vas","va","va","vamos","vais","van"] } };
 
-  // Persons with you clarification
+  // Persons (with you SG/PL tag for English prompts only)
   const PERSONS = [
     {label:"I", en:"I", tag:""},
     {label:"you (sg.)", en:"you", tag:" (you: singular)"},
@@ -59,7 +62,7 @@
     {label:"they", en:"they", tag:""}
   ];
 
-  // Transport options (English label + Spanish phrase)
+  // Transport options (used for D2/D3/Homework/Friday)
   const TRANSPORTS = [
     {en:"by bus",        es:"en autobús"},
     {en:"by train",      es:"en tren"},
@@ -91,8 +94,7 @@
   function isUnlocked(day){
     if (day === "D1") return true;      // Monday always open
     if (day === "HOMEWORK") return true;
-    const v = localStorage.getItem(keyUnlocked(day));
-    return v === "1";
+    return localStorage.getItem(keyUnlocked(day)) === "1";
   }
   function unlock(day){ localStorage.setItem(keyUnlocked(day), "1"); }
 
@@ -130,7 +132,7 @@
                   : (modeKey==="D1") ? false
                   : (modeKey==="FRIDAY") ? !isUnlocked("FRIDAY") && !(isUnlocked("D2") && isUnlocked("D3"))
                   : !isUnlocked(modeKey);
-    btn.disabled = locked; 
+    btn.disabled = locked;
     const icon = locked ? "🔒" : "🔓";
     const best = getBest(currentTense, modeKey);
     btn.textContent = `${icon} ${label}${best!=null ? " — Best: "+best.toFixed(1)+"s" : ""}`;
@@ -170,16 +172,23 @@
       const promptRow = document.createElement("div"); promptRow.className = "prompt-row";
       const p = document.createElement("div"); p.className = "prompt"; p.textContent = `${i+1}. ${q.prompt}`;
 
-      const spk = document.createElement("button"); spk.className = "icon-btn"; spk.textContent = "🔊"; spk.title = "Read this question";
+      const spk = document.createElement("button"); spk.className = "icon-btn"; spk.textContent = "🔊";
+      spk.title = "Read this question";
       spk.onclick = ()=> VOICE.speak(q.prompt.replace(/\s*\(.*\)\s*$/,''), 'en');
 
-      const mic = document.createElement("button"); mic.className = "icon-btn"; mic.textContent = "🎤"; mic.title = srSupported ? "Dictate answer (Spanish)" : "Speech recognition not supported";
-      const input = document.createElement("input"); input.type = "text"; input.placeholder = "Type or dictate the Spanish form (e.g., voy al colegio)";
+      const mic = document.createElement("button"); mic.className = "icon-btn"; mic.textContent = "🎤";
+      mic.title = srSupported ? "Dictate answer (Spanish)" : "Speech recognition not supported";
+
+      const input = document.createElement("input"); input.type = "text";
+      input.placeholder = (modeKey==="D1") ? "Type: voy / no voy / va?" : "Type: voy al colegio en autobús";
+
       if (srSupported) {
-        mic.onclick = ()=>{ const rec = new SR(); rec.lang = "es-ES"; rec.interimResults = false; rec.maxAlternatives = 1;
+        mic.onclick = ()=>{ 
+          const rec = new SR(); rec.lang = "es-ES"; rec.interimResults = false; rec.maxAlternatives = 1;
           mic.disabled = true; mic.textContent = "⏺️…";
           rec.onresult = e => { const said = e.results[0][0].transcript || ""; input.value = said; };
-          rec.onerror = ()=>{}; rec.onend = ()=>{ mic.disabled=false; mic.textContent="🎤"; };
+          rec.onerror = ()=>{}; 
+          rec.onend = ()=>{ mic.disabled=false; mic.textContent="🎤"; };
           try { rec.start(); } catch(e) { mic.disabled=false; mic.textContent="🎤"; }
         };
       } else mic.disabled = true;
@@ -195,38 +204,35 @@
   }
 
   function buildPoolForMode(modeKey){
-    if (modeKey === "D1") return buildPool_IROnly();
-    // Homework uses all unlocked days; Friday uses full week. Both should include IR+Transport.
-    if (modeKey === "HOMEWORK" || modeKey === "FRIDAY" || modeKey === "D2" || modeKey === "D3") {
-      return buildPool_IRTransport();
-    }
+    if (modeKey === "D1") return buildPool_IROnlyBare();
+    // Homework/Friday/D2/D3 use the IR+Transport pool
     return buildPool_IRTransport();
   }
 
-  // --- Pool A: IR only (no transport vocab)
-  function buildPool_IROnly(){
+  // --- Pool A: IR only (bare verb, no complements) for D1
+  function buildPool_IROnlyBare(){
     const pool = [];
     PERSONS.forEach((person, idx) => {
-      const conj = DB.ir.present[idx];
-      const pos = `${conj} al colegio`;
-      const neg = `no ${conj} al colegio`;
-      const q   = `¿${conj} al colegio?`;
-      pool.push({ prompt: enPromptToSchool(person, "pos"), answer: pos });
-      pool.push({ prompt: enPromptToSchool(person, "neg"), answer: neg });
-      pool.push({ prompt: enPromptToSchool(person, "q"),   answer: q   });
+      const c = DB.ir.present[idx];
+      const pos = `${c}`;
+      const neg = `no ${c}`;
+      const q   = `${c}?`;             // expected MUST end with "?" (we’ll ignore leading ¿ if user adds it)
+      pool.push({ prompt: enPromptBare(person, "pos"), answer: pos });
+      pool.push({ prompt: enPromptBare(person, "neg"), answer: neg });
+      pool.push({ prompt: enPromptBare(person, "q"),   answer: q   });
     });
     return pool;
   }
 
-  // --- Pool B: IR + Transport
+  // --- Pool B: IR + Transport (used for D2/D3/Homework/Friday)
   function buildPool_IRTransport(){
     const pool = [];
     PERSONS.forEach((person, idx) => {
       TRANSPORTS.forEach(tr => {
-        const conj = DB.ir.present[idx];
-        const pos = `${conj} al colegio ${tr.es}`;
-        const neg = `no ${conj} al colegio ${tr.es}`;
-        const q   = `¿${conj} al colegio ${tr.es}?`;
+        const c = DB.ir.present[idx];
+        const pos = `${c} al colegio ${tr.es}`;
+        const neg = `no ${c} al colegio ${tr.es}`;
+        const q   = `${c} al colegio ${tr.es}?`;   // expected ends with "?"
         pool.push({ prompt: enPromptTransport(person, "pos", tr.en), answer: pos });
         pool.push({ prompt: enPromptTransport(person, "neg", tr.en), answer: neg });
         pool.push({ prompt: enPromptTransport(person, "q",   tr.en), answer: q   });
@@ -239,14 +245,16 @@
   const is3 = s => (s==="he"||s==="she"||s==="it");
   const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
 
-  function enPromptToSchool(person, kind){
+  // D1 prompts: just the verb “go”
+  function enPromptBare(person, kind){
     const s = person.en, t = person.tag || "";
     const goes = is3(s) ? "goes" : "go";
-    if (kind==="pos") return `${cap(s)}${t} ${goes} to school (ir)`;
-    if (kind==="neg") return `${cap(s)}${t} ${is3(s)?'does':'do'} not go to school (ir)`;
-    return `${is3(s)?'Does':'Do'} ${s}${t} go to school? (ir)`;
+    if (kind==="pos") return `${cap(s)}${t} ${goes} (ir)`;
+    if (kind==="neg") return `${cap(s)}${t} ${is3(s)?'does':'do'} not go (ir)`;
+    return `${is3(s)?'Does':'Do'} ${s}${t} go? (ir)`;
   }
 
+  // D2/D3 prompts: include “to school” + transport
   function enPromptTransport(person, kind, transportEN){
     const s = person.en, t = person.tag || "";
     const goes = is3(s) ? "goes" : "go";
@@ -273,7 +281,7 @@
     let correct = 0; const items = [];
     inputs.forEach((inp,i)=>{
       const expected = quiz[i].answer;
-      const ok = norm(inp.value) === norm(expected);
+      const ok = isAnswerCorrect(inp.value, expected);
       inp.classList.remove("good","bad"); inp.classList.add(ok ? "good" : "bad");
       if (ok) correct++;
       const li = document.createElement("li");
@@ -304,11 +312,34 @@
     $("#back-button").onclick = ()=>{ $("#game").style.display = "none"; $("#mode-list").style.display = "flex"; renderModes(); };
   }
 
+  // --- Correctness check with your rules ---
+  // - Case-insensitive (capitals ignored)
+  // - Accents optional
+  // - Leading inverted ¿ ignored
+  // - Final "?" REQUIRED when the expected answer is a question
+  function isAnswerCorrect(given, expected){
+    const g = norm(given);
+    const e = norm(expected);
+    const expectedIsQuestion = /\?$/.test(e);  // ends with ?
+
+    if (expectedIsQuestion) {
+      // Student must include a final "?".
+      if (!/\?$/.test(g)) return false;
+      // Ignore a leading inverted question mark if present.
+      const gStripped = g.replace(/^¿/,"");
+      const eStripped = e.replace(/^¿/,"");
+      return gStripped === eStripped;
+    }
+    // Non-questions: straight equality after normalization
+    return g === e;
+  }
+
   function norm(s){
-    // accents required visually; normalize for checking
-    return (s||"").toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-      .replace(/[¿?¡!]/g,"").replace(/\s+/g," ").trim();
+    return (s||"")
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // strip accents
+      .trim()
+      .replace(/\s+/g," "); // collapse spaces
   }
 
   // ----- Best per (tense, mode) -----
@@ -322,8 +353,7 @@
 
   // ----- Force Present only -----
   function setTenseButtonsToPresentOnly(){
-    const btns = $$(".tense-button");
-    btns.forEach(b=>{
+    $$(".tense-button").forEach(b=>{
       const isPresent = b.dataset.tense === "Present";
       b.classList.toggle("active", isPresent);
       b.disabled = !isPresent;
