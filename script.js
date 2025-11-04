@@ -1,14 +1,14 @@
-// TURBO: IR + Transport — Present tense only (pos / neg / q)
+// TURBO: IR + Transport — Present tense only
+// D1 = IR only (no transport), D2/D3 = IR + Transport
 (()=>{
   const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 
   // ----- CONFIG -----
   const CONFIG = {
     title: "IR + Transport",
-    // Optional unlock codes (keep or change)
     codes: { D2: "MTW-D2-OPEN", D3: "MTW-D3-OPEN", FRIDAY: "MTW-FRI-OPEN" },
     days: {
-      D1: { label: "Monday (IR + Transport)", verbs: ["ir"] },
+      D1: { label: "Monday (IR only)", verbs: ["ir"] },
       D2: { label: "Tuesday (IR + Transport)", verbs: ["ir"] },
       D3: { label: "Wednesday (IR + Transport)", verbs: ["ir"] }
     },
@@ -46,9 +46,7 @@
   const srSupported = !!SR;
 
   // ----- IR DB -----
-  const DB = {
-    ir: { present: ["voy","vas","va","va","vamos","vais","van"] }
-  };
+  const DB = { ir: { present: ["voy","vas","va","va","vamos","vais","van"] } };
 
   // Persons with you clarification
   const PERSONS = [
@@ -62,7 +60,6 @@
   ];
 
   // Transport options (English label + Spanish phrase)
-  // Most take "en ..."; walking is "a pie".
   const TRANSPORTS = [
     {en:"by bus",        es:"en autobús"},
     {en:"by train",      es:"en tren"},
@@ -83,7 +80,7 @@
   document.title = `TURBO: ${CONFIG.title}`;
   $("h1").innerHTML = `<span class="turbo">TURBO</span>: ${CONFIG.title}`;
 
-  // Lock tense to Present and disable the other buttons visually
+  // Lock tense to Present and disable the other buttons
   setTenseButtonsToPresentOnly();
 
   $("#codeBtn").onclick = handleCode;
@@ -141,7 +138,7 @@
     return btn;
   }
 
-  // ----- Build quiz (IR + Transport, Present) -----
+  // ----- Build quiz (mode-specific) -----
   function startMode(modeKey){
     currentMode = modeKey;
     $("#mode-list").style.display = "none";
@@ -149,7 +146,7 @@
     $("#results").innerHTML = "";
     $("#back-button").style.display = "none";
 
-    const pool = buildPoolForMode(modeKey /* Present-only */);
+    const pool = buildPoolForMode(modeKey);
     shuffle(pool);
     const quiz = pool.slice(0, CONFIG.QUESTIONS_PER_RUN);
 
@@ -177,7 +174,7 @@
       spk.onclick = ()=> VOICE.speak(q.prompt.replace(/\s*\(.*\)\s*$/,''), 'en');
 
       const mic = document.createElement("button"); mic.className = "icon-btn"; mic.textContent = "🎤"; mic.title = srSupported ? "Dictate answer (Spanish)" : "Speech recognition not supported";
-      const input = document.createElement("input"); input.type = "text"; input.placeholder = "Type or dictate: voy al colegio en autobús";
+      const input = document.createElement("input"); input.type = "text"; input.placeholder = "Type or dictate the Spanish form (e.g., voy al colegio)";
       if (srSupported) {
         mic.onclick = ()=>{ const rec = new SR(); rec.lang = "es-ES"; rec.interimResults = false; rec.maxAlternatives = 1;
           mic.disabled = true; mic.textContent = "⏺️…";
@@ -198,30 +195,43 @@
   }
 
   function buildPoolForMode(modeKey){
-    // For this game, all modes use the same IR+Transport pool (Present)
-    const persons = PERSONS;
+    if (modeKey === "D1") return buildPool_IROnly();
+    // Homework uses all unlocked days; Friday uses full week. Both should include IR+Transport.
+    if (modeKey === "HOMEWORK" || modeKey === "FRIDAY" || modeKey === "D2" || modeKey === "D3") {
+      return buildPool_IRTransport();
+    }
+    return buildPool_IRTransport();
+  }
+
+  // --- Pool A: IR only (no transport vocab)
+  function buildPool_IROnly(){
     const pool = [];
+    PERSONS.forEach((person, idx) => {
+      const conj = DB.ir.present[idx];
+      const pos = `${conj} al colegio`;
+      const neg = `no ${conj} al colegio`;
+      const q   = `¿${conj} al colegio?`;
+      pool.push({ prompt: enPromptToSchool(person, "pos"), answer: pos });
+      pool.push({ prompt: enPromptToSchool(person, "neg"), answer: neg });
+      pool.push({ prompt: enPromptToSchool(person, "q"),   answer: q   });
+    });
+    return pool;
+  }
 
-    const dayKeys = (modeKey === "HOMEWORK") ? ["D1","D2","D3"].filter(d => isUnlocked(d) || d==="D1")
-                   : (modeKey === "FRIDAY") ? ["D1","D2","D3"]
-                   : [modeKey];
-
-    // We’ll still respect unlocked days, but all days share the same topic.
-    dayKeys.forEach(_d=>{
-      persons.forEach((person, idx) => {
-        TRANSPORTS.forEach(tr => {
-          const conj = DB.ir.present[idx]; // voy/vas/va/vamos/vais/van
-          const targetPos = `${conj} al colegio ${tr.es}`;
-          const targetNeg = `no ${conj} al colegio ${tr.es}`;
-          const targetQ   = `¿${conj} al colegio ${tr.es}?`;
-
-          pool.push({ prompt: enPrompt(person, "pos", tr.en), answer: targetPos });
-          pool.push({ prompt: enPrompt(person, "neg", tr.en), answer: targetNeg });
-          pool.push({ prompt: enPrompt(person, "q",   tr.en), answer: targetQ   });
-        });
+  // --- Pool B: IR + Transport
+  function buildPool_IRTransport(){
+    const pool = [];
+    PERSONS.forEach((person, idx) => {
+      TRANSPORTS.forEach(tr => {
+        const conj = DB.ir.present[idx];
+        const pos = `${conj} al colegio ${tr.es}`;
+        const neg = `no ${conj} al colegio ${tr.es}`;
+        const q   = `¿${conj} al colegio ${tr.es}?`;
+        pool.push({ prompt: enPromptTransport(person, "pos", tr.en), answer: pos });
+        pool.push({ prompt: enPromptTransport(person, "neg", tr.en), answer: neg });
+        pool.push({ prompt: enPromptTransport(person, "q",   tr.en), answer: q   });
       });
     });
-
     return pool;
   }
 
@@ -229,12 +239,19 @@
   const is3 = s => (s==="he"||s==="she"||s==="it");
   const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
 
-  function enPrompt(person, kind, transportEN){
+  function enPromptToSchool(person, kind){
+    const s = person.en, t = person.tag || "";
+    const goes = is3(s) ? "goes" : "go";
+    if (kind==="pos") return `${cap(s)}${t} ${goes} to school (ir)`;
+    if (kind==="neg") return `${cap(s)}${t} ${is3(s)?'does':'do'} not go to school (ir)`;
+    return `${is3(s)?'Does':'Do'} ${s}${t} go to school? (ir)`;
+  }
+
+  function enPromptTransport(person, kind, transportEN){
     const s = person.en, t = person.tag || "";
     const goes = is3(s) ? "goes" : "go";
     if (kind==="pos") return `${cap(s)}${t} ${goes} to school ${transportEN} (ir)`;
     if (kind==="neg") return `${cap(s)}${t} ${is3(s)?'does':'do'} not go to school ${transportEN} (ir)`;
-    // question
     return `${is3(s)?'Does':'Do'} ${s}${t} go to school ${transportEN}? (ir)`;
   }
 
@@ -288,9 +305,9 @@
   }
 
   function norm(s){
-    // accents required visually, but normalize for fair checking (as agreed in your prefs)
+    // accents required visually; normalize for checking
     return (s||"").toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // strip accents
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
       .replace(/[¿?¡!]/g,"").replace(/\s+/g," ").trim();
   }
 
@@ -311,12 +328,10 @@
       b.classList.toggle("active", isPresent);
       b.disabled = !isPresent;
       if (!isPresent) b.title = "Present only in this game";
-      b.onclick = ()=>{}; // no-op for this game
+      b.onclick = ()=>{}; // no-op
     });
-    // Ensure currentTense is Present
     currentTense = "Present";
   }
 
   function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
-
 })();
